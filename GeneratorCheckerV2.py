@@ -297,7 +297,7 @@ def send_webhook(username):
     colors = [5793266, 5763719, 3066993, 2067276, 3447003]
 
     embed = {
-        "title": "Pseudo disponible",
+        "title": "Pseudo dispo",
         "description": f"```{username}```",
         "color": random.choice(colors),
         "fields": [
@@ -369,7 +369,7 @@ class Checker:
 
         clear_screen()
         print(f"{C}{'=' * 50}{E}")
-        print(f"{C}   4 char checker — recherche active{E}")
+        print(f"{C}   4 character checker {E}")
         print(f"{C}{'=' * 50}{E}")
         print(f"{Y}Delai: {DELAY_BETWEEN}s entre chaque test{E}")
         print(f"{Y}ESC pour stop{E}")
