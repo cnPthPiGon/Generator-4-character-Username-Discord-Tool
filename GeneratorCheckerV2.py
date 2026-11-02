@@ -42,45 +42,21 @@ ASCII_HEAD = r"""
 """
 
 PALETTE_PASS = [
-    (87, 242, 135),
-    (40, 92, 54),
-    (57, 150, 81),
-    (51, 126, 70),
-    (46, 204, 113),
-    (80, 220, 100),
-    (118, 172, 63),
-    (47, 114, 65),
-    (49, 122, 69),
-    (59, 157, 84),
-    (57, 151, 81),
-    (58, 155, 83),
-    (53, 140, 76),
-    (60, 179, 113),
-    (46, 139, 87),
-    (152, 251, 152),
+    (87, 242, 135), (40, 92, 54), (57, 150, 81), (51, 126, 70),
+    (46, 204, 113), (80, 220, 100), (118, 172, 63), (47, 114, 65),
+    (49, 122, 69), (59, 157, 84), (57, 151, 81), (58, 155, 83),
+    (53, 140, 76), (60, 179, 113), (46, 139, 87), (152, 251, 152),
 ]
 
 PALETTE_FAIL = [
-    (237, 66, 69),
-    (229, 57, 53),
-    (170, 88, 87),
-    (106, 58, 58),
-    (235, 117, 113),
-    (151, 79, 78),
-    (188, 97, 95),
-    (255, 99, 71),
-    (205, 92, 92),
-    (220, 20, 60),
+    (237, 66, 69), (229, 57, 53), (170, 88, 87), (106, 58, 58),
+    (235, 117, 113), (151, 79, 78), (188, 97, 95), (255, 99, 71),
+    (205, 92, 92), (220, 20, 60),
 ]
 
 PALETTE_NEUTRAL = [
-    (88, 101, 242),
-    (78, 93, 148),
-    (60, 60, 65),
-    (53, 54, 56),
-    (41, 28, 54),
-    (72, 73, 75),
-    (56, 57, 60),
+    (88, 101, 242), (78, 93, 148), (60, 60, 65), (53, 54, 56),
+    (41, 28, 54), (72, 73, 75), (56, 57, 60),
 ]
 
 PASS_WORDS = [
@@ -96,6 +72,12 @@ FAIL_WORDS = [
     "不可用", "使用できません", "사용할 수 없", "pris", "taken", "belegt",
     "occupé", "occupato", "ocupado", "bezet", "zajęta", "essaie", "try",
     "nicht verfugbar", "nicht verfuegbar", "no disponible", "non disponible",
+]
+
+PLACEHOLDER_WORDS = [
+    "merci de n'utiliser", "only use numbers", "nur zahlen", "solo numeros",
+    "só números", "alleen cijfers", "tylko cyfry", "数字のみ", "숫자만",
+    "只能使用", "underscores", "periods", "tirets bas", "points",
 ]
 
 TICK_MIN = 1.4
@@ -214,7 +196,7 @@ def _scan_colors(box):
 
 def _scan_text(box):
     if not _OCR:
-        return "UNKNOWN"
+        return "UNKNOWN", ""
     x, y, w, h = box
     try:
         img = pyautogui.screenshot(region=(x, y, w, h))
@@ -222,45 +204,56 @@ def _scan_text(box):
         img = img.resize((w * 4, h * 4), Image.LANCZOS)
         img = ImageOps.invert(img)
         img = img.filter(ImageFilter.SHARPEN)
-        img = img.point(lambda p: 255 if p > 110 else 0, "1")
+        img = img.point(lambda p: 255 if p > 100 else 0, "1")
 
-        text = pytesseract.image_to_string(
+        raw = pytesseract.image_to_string(
             img,
             lang="eng+fra+deu+spa+ita+por+nld+pol+jpn+kor+chi_sim",
-            config="--psm 7 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZàâäéèêëîïôöùûüçñáíóúüß?!. ",
-        ).lower()
+            config="--psm 6",
+        )
+        text = raw.lower()
         text = text.replace("\n", " ").replace("  ", " ").strip()
 
         if not text or len(text) < 3:
-            return "UNKNOWN"
+            return "UNKNOWN", text
 
-        for w in FAIL_WORDS:
-            if w in text:
-                return "FAIL"
-        for w in PASS_WORDS:
-            if w in text:
-                return "PASS"
-        return "UNKNOWN"
-    except Exception:
-        return "UNKNOWN"
+        has_placeholder = any(pw in text for pw in PLACEHOLDER_WORDS)
+        has_fail = any(fw in text for fw in FAIL_WORDS)
+        has_pass = any(pw in text for pw in PASS_WORDS)
+
+        if has_fail:
+            return "FAIL", text
+        if has_pass:
+            return "PASS", text
+        if has_placeholder:
+            return "PLACEHOLDER", text
+        return "UNKNOWN", text
+    except Exception as e:
+        return "UNKNOWN", f"err:{e}"
 
 
 def _read_status(box):
-    hits_text = []
-    hits_color = []
+    results = []
     for _ in range(SAMPLES):
-        hits_text.append(_scan_text(box))
-        hits_color.append(_scan_colors(box))
+        status, text = _scan_text(box)
+        results.append((status, text))
         _jitter(SAMPLE_GAP, 0.03)
 
-    if "FAIL" in hits_text:
+    statuses = [r[0] for r in results]
+
+    if "FAIL" in statuses:
         return "FAIL"
-    if "PASS" in hits_text:
+    if "PASS" in statuses:
         return "PASS"
-    if "FAIL" in hits_color:
+    if statuses.count("PLACEHOLDER") >= 2:
+        return "RATE_LIMIT"
+
+    color = _scan_colors(box)
+    if color == "FAIL":
         return "FAIL"
-    if "PASS" in hits_color:
+    if color == "PASS":
         return "PASS"
+
     return "UNKNOWN"
 
 
@@ -320,7 +313,6 @@ class RegionPicker:
         self.root.geometry("400x18+200+120")
         self.root.resizable(True, True)
         self.root.attributes("-alpha", 0.75)
-
         self.root.bind("<Return>", self._confirm)
         self.root.bind("<Escape>", self._cancel)
 
@@ -328,22 +320,15 @@ class RegionPicker:
             self.root, bg="#8A2BE2", highlightthickness=0, cursor="fleur"
         )
         self.canvas.pack(fill="both", expand=True)
-
         self.canvas.create_text(
             200, 9,
             text="MOVE  •  ENTER = OK  •  ESC = CANCEL",
             fill="white",
             font=("Arial", 6, "bold")
         )
-
         self.canvas.bind("<Button-1>", self._start_move)
         self.canvas.bind("<B1-Motion>", self._do_move)
-
         self.result = None
-
-        print(f"{ANSI_CYN}[picker] drag with left click to move{ANSI_RST}")
-        print(f"{ANSI_CYN}[picker] resize with window corners{ANSI_RST}")
-        print(f"{ANSI_CYN}[picker] ENTER confirm, ESC cancel{ANSI_RST}")
 
     def _start_move(self, event):
         self.root._offset_x = event.x_root - self.root.winfo_x()
@@ -355,11 +340,10 @@ class RegionPicker:
         self.root.geometry(f"+{nx}+{ny}")
 
     def _confirm(self, event=None):
-        x = self.root.winfo_x()
-        y = self.root.winfo_y()
-        w = self.root.winfo_width()
-        h = self.root.winfo_height()
-        self.result = (x, y, w, h)
+        self.result = (
+            self.root.winfo_x(), self.root.winfo_y(),
+            self.root.winfo_width(), self.root.winfo_height()
+        )
         self.root.destroy()
 
     def _cancel(self, event=None):
@@ -406,7 +390,7 @@ def main():
     print(f"{ANSI_RED}{_center(ASCII_HEAD, term_w)}{ANSI_RST}")
     print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}")
     print(f"{ANSI_YLW}ocr      : {'active' if _OCR else 'disabled'}{ANSI_RST}")
-    print(f"{ANSI_YLW}mode     : colors + text multi-lang{ANSI_RST}")
+    print(f"{ANSI_YLW}mode     : colors + text + placeholder detection{ANSI_RST}")
     print(f"{ANSI_YLW}interval : {TICK_MIN}-{TICK_MAX}s{ANSI_RST}")
     print(f"{ANSI_YLW}rest     : every {DRIFT_EVERY} checks{ANSI_RST}")
     print(f"{ANSI_YLW}stop     : ESC{ANSI_RST}")
@@ -414,7 +398,8 @@ def main():
 
     wait_for_click()
 
-    print(f"{ANSI_CYN}Place the purple window on the Discord message, then press ENTER.{ANSI_RST}")
+    print(f"{ANSI_CYN}Place the purple window on the message area, then ENTER.{ANSI_RST}")
+    print(f"{ANSI_DIM}The window must cover the line that shows available/unavailable.{ANSI_RST}")
     pick_region()
 
     print(f"{ANSI_CYN}Starting in 2 seconds... click Discord window to focus.{ANSI_RST}")
@@ -423,6 +408,7 @@ def main():
     keyboard.on_press_key("esc", _interrupt)
 
     state = {"n": 0}
+    unknown_streak = 0
 
     try:
         while not _stop:
@@ -437,11 +423,23 @@ def main():
             _jitter(0.11, 0.04)
 
             _human_type(name)
-            _jitter(0.48, 0.15)
+            _jitter(0.6, 0.15)
 
             status = _read_status(_region)
 
-            if status == "PASS":
+            if status == "RATE_LIMIT":
+                print(f"{ANSI_RED}{name} : rate limited{ANSI_RST}")
+                print(f"\n{ANSI_RED}{'=' * term_w}{ANSI_RST}")
+                print(f"{ANSI_RED}  RATE LIMITED — STOPPING{ANSI_RST}")
+                print(f"{ANSI_RED}  Only placeholder text detected{ANSI_RST}")
+                print(f"{ANSI_RED}  Discord blocked checks on this field{ANSI_RST}")
+                print(f"{ANSI_RED}{'=' * term_w}{ANSI_RST}\n")
+                keyboard.unhook_all()
+                print(f"{ANSI_RED}Press any key to exit.{ANSI_RST}")
+                keyboard.read_key()
+                sys.exit(1)
+
+            elif status == "PASS":
                 print(f"{ANSI_GRN}{name} : false{ANSI_RST}")
                 print(f"\n{ANSI_GRN}{'=' * term_w}{ANSI_RST}")
                 print(f"{ANSI_GRN}  FOUND : {name}{ANSI_RST}")
@@ -454,8 +452,17 @@ def main():
 
             elif status == "FAIL":
                 print(f"{ANSI_RED}{name} : true{ANSI_RST}")
+                unknown_streak = 0
             else:
                 print(f"{ANSI_YLW}{name} : unknown{ANSI_RST}")
+                unknown_streak += 1
+                if unknown_streak >= 15:
+                    print(f"\n{ANSI_RED}15 unknowns in a row — zone is probably wrong{ANSI_RST}")
+                    print(f"{ANSI_RED}Restart and re-place the selector on the message line.{ANSI_RST}")
+                    keyboard.unhook_all()
+                    print(f"{ANSI_RED}Press any key to exit.{ANSI_RST}")
+                    keyboard.read_key()
+                    sys.exit(2)
 
             _wait_cycle(state)
 
