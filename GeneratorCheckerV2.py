@@ -317,7 +317,7 @@ class RegionPicker:
         self.root.title("Place on the Discord message")
         self.root.attributes("-topmost", True)
         self.root.configure(bg="#8A2BE2")
-        self.root.geometry("400x22+200+120")
+        self.root.geometry("400x18+200+120")
         self.root.resizable(True, True)
         self.root.attributes("-alpha", 0.75)
 
@@ -330,10 +330,10 @@ class RegionPicker:
         self.canvas.pack(fill="both", expand=True)
 
         self.canvas.create_text(
-            200, 11,
-            text="MOVE ME  •  ENTER = OK  •  ESC = CANCEL",
+            200, 9,
+            text="MOVE  •  ENTER = OK  •  ESC = CANCEL",
             fill="white",
-            font=("Arial", 7, "bold")
+            font=("Arial", 6, "bold")
         )
 
         self.canvas.bind("<Button-1>", self._start_move)
