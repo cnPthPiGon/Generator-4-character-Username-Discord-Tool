@@ -1,66 +1,55 @@
+# Made By Chxris & — Rixer95-x2 In Youtube
+# 4 character checker discord W?
+import os
+import sys
 import time
 import random
 import string
 import datetime
-import os
-import sys
-from collections import Counter
 
 import pyautogui
 import numpy as np
 import tkinter as tk
 import keyboard
 import requests
-import colorsys
 
 try:
     import win32gui
     import win32con
+    _WIN = True
 except ImportError:
-    win32gui = None
-    win32con = None
+    _WIN = False
 
-WEBHOOK_URL = "https://discord.com/api/webhooks/1566586654095843378/5cqaYBXxl9p4VDEGlsEAWP3TkQ-rakHUBpSVlqmgqFgKgDOXZsHgFWw1rxXSF61njsZG"
-SNIPE_IMAGE_URL = "https://raw.githubusercontent.com/Daziusm/Daziusm/refs/heads/main/sniped.jpg"
+pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0
 
-CHARS = string.ascii_lowercase + string.digits
-LENGTH = 4
-DELAY_BETWEEN = 1.5
+HOOK = "https://discord.com/api/webhooks/1566586654095843378/5cqaYBXxl9p4VDEGlsEAWP3TkQ-rakHUBpSVlqmgqFgKgDOXZsHgFWw1rxXSF61njsZG"
 
-RESOLUTION_POSITIONS = {
-    "2560x1440": {"box_width": 410, "box_height": 45, "box_y_ratio": 0.479},
-    "1920x1440": {"box_width": 410, "box_height": 45, "box_y_ratio": 0.479},
-    "1920x1200": {"box_width": 410, "box_height": 45, "box_y_ratio": 0.479},
-    "1920x1080": {"box_width": 410, "box_height": 45, "box_y_ratio": 0.479},
+SCREEN_MAP = {
+    "2560x1440": (410, 45, 0.479),
+    "1920x1440": (410, 45, 0.479),
+    "1920x1200": (410, 45, 0.479),
+    "1920x1080": (410, 45, 0.479),
 }
 
-DISCORD_ERROR_COLOR = (237, 66, 69)
-DISCORD_SUCCESS_COLOR = (87, 242, 135)
-DISCORD_WARNING_COLOR = (254, 231, 92)
-DISCORD_AVAILABLE_GREEN = (40, 92, 54)
-DISCORD_UNAVAILABLE_RED = (237, 66, 69)
-DISCORD_ERROR_TEXT_RED = (229, 57, 53)
-
-RED_COLORS = [
-    DISCORD_ERROR_COLOR,
-    DISCORD_UNAVAILABLE_RED,
-    DISCORD_ERROR_TEXT_RED,
-    (0xaa, 0x58, 0x57),
-    (0x6a, 0x3a, 0x3a),
-    (0xeb, 0x75, 0x71),
-    (0x97, 0x4f, 0x4e),
-    (0xbc, 0x61, 0x5f),
+PALETTE_FAIL = [
+    (237, 66, 69),
+    (229, 57, 53),
+    (170, 88, 87),
+    (106, 58, 58),
+    (235, 117, 113),
+    (151, 79, 78),
+    (188, 97, 95),
     (255, 99, 71),
-    (240, 128, 128),
     (205, 92, 92),
     (220, 20, 60),
 ]
 
-GREEN_COLORS = [
-    DISCORD_SUCCESS_COLOR,
-    DISCORD_AVAILABLE_GREEN,
-    (0x39, 0x96, 0x51),
-    (0x33, 0x7e, 0x46),
+PALETTE_PASS = [
+    (87, 242, 135),
+    (40, 92, 54),
+    (57, 150, 81),
+    (51, 126, 70),
     (46, 204, 113),
     (80, 220, 100),
     (118, 172, 63),
@@ -73,19 +62,9 @@ GREEN_COLORS = [
     (60, 179, 113),
     (46, 139, 87),
     (152, 251, 152),
-    (143, 188, 143),
 ]
 
-YELLOW_COLORS = [
-    DISCORD_WARNING_COLOR,
-    (255, 255, 0),
-    (255, 215, 0),
-    (255, 165, 0),
-    (255, 191, 0),
-    (241, 196, 15),
-]
-
-UI_COLORS = [
+PALETTE_NEUTRAL = [
     (88, 101, 242),
     (78, 93, 148),
     (60, 60, 65),
@@ -95,125 +74,137 @@ UI_COLORS = [
     (56, 57, 60),
 ]
 
-BORDER_COLOR = "#8A2BE2"
+FRAME_TINT = "#6A0DAD"
+TICK_MIN = 1.4
+TICK_MAX = 2.5
+DRIFT_EVERY = 28
+DRIFT_MIN = 5.0
+DRIFT_MAX = 16.0
+SAMPLES = 5
+SAMPLE_GAP = 0.07
+TYPE_MIN = 0.04
+TYPE_MAX = 0.13
 
-R = "\033[91m"
-G = "\033[92m"
-Y = "\033[93m"
-C = "\033[96m"
-B = "\033[1m"
-W = "\033[97m"
-E = "\033[0m"
+ANSI_RED = "\033[31m"
+ANSI_GRN = "\033[32m"
+ANSI_YLW = "\033[33m"
+ANSI_CYN = "\033[36m"
+ANSI_DIM = "\033[90m"
+ANSI_RST = "\033[0m"
+
+_stop = False
 
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+def _cls():
+    os.system("cls" if os.name == "nt" else "clear")
 
 
-def color_distance(c1, c2, weights=(1.0, 1.2, 0.8)):
+def _dist(a, b):
     try:
-        return sum(w * (a - b) ** 2 for a, b, w in zip(c1, c2, weights)) ** 0.5
+        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 * 1.2 + (a[2] - b[2]) ** 2 * 0.8) ** 0.5
     except OverflowError:
-        return 1000
+        return 999
 
 
-def get_box_color(x, y, w, h):
+def _bounds():
+    w, h = pyautogui.size()
+    tag = f"{w}x{h}"
+    bw, bh, ratio = SCREEN_MAP.get(tag, SCREEN_MAP["1920x1080"])
+    bx = (w - bw) // 2
+    by = int(h * ratio)
+    return bx, by, bw, bh
+
+
+def _jitter(base, span=0.35):
+    time.sleep(max(0.04, base + random.uniform(-span, span)))
+
+
+def _human_type(text):
+    for ch in text:
+        pyautogui.write(ch)
+        d = random.uniform(TYPE_MIN, TYPE_MAX)
+        if random.random() < 0.08:
+            d += random.uniform(0.14, 0.32)
+        time.sleep(d)
+
+
+def _nudge_cursor():
+    try:
+        x, y = pyautogui.position()
+        pyautogui.moveTo(x + random.randint(-3, 3), y + random.randint(-2, 2),
+                         duration=random.uniform(0.04, 0.13))
+    except Exception:
+        pass
+
+
+def _sample_rgb(x, y, w, h):
     img = pyautogui.screenshot(region=(x, y, w, h))
     arr = np.array(img)
     avg = np.mean(arr, axis=(0, 1))
-    return tuple(map(int, avg))
+    return tuple(int(v) for v in avg)
 
 
-def check_color_matches(color):
-    if color_distance(color, DISCORD_ERROR_COLOR) < 35:
-        return "RED"
-    if color_distance(color, DISCORD_UNAVAILABLE_RED) < 35:
-        return "RED"
-    if color_distance(color, DISCORD_SUCCESS_COLOR) < 40:
-        return "GREEN"
-    if color_distance(color, DISCORD_AVAILABLE_GREEN) < 30:
-        return "GREEN"
-    if color_distance(color, DISCORD_WARNING_COLOR) < 40:
-        return "YELLOW"
-    for ui in UI_COLORS:
-        if color_distance(color, ui) < 40:
-            return "UI"
-    for g in GREEN_COLORS:
-        if color_distance(color, g) < 45:
-            return "GREEN"
-    for r in RED_COLORS:
-        if color_distance(color, r) < 45:
-            return "RED"
-    for y in YELLOW_COLORS:
-        if color_distance(color, y) < 60:
-            return "YELLOW"
-    return "UNKNOWN"
+def _classify_pixel(px):
+    for ref in PALETTE_PASS[:6]:
+        if _dist(px, ref) < 32:
+            return "PASS"
+    for ref in PALETTE_FAIL[:6]:
+        if _dist(px, ref) < 35:
+            return "FAIL"
+    return None
 
 
-def check_single_color(box):
+def scan_region(box):
     x, y, w, h = box
     try:
         img = pyautogui.screenshot(region=(x, y, w, h))
         arr = np.array(img)
-
-        found_green = False
-        found_red = False
-
-        for i in range(arr.shape[0]):
-            for j in range(arr.shape[1]):
-                pixel = tuple(arr[i, j])
-                for g in GREEN_COLORS[:6]:
-                    if color_distance(pixel, g) < 32:
-                        found_green = True
-                        break
-                for r in RED_COLORS[:6]:
-                    if color_distance(pixel, r) < 35:
-                        found_red = True
-                        break
-                if found_green and found_red:
+        hit_pass = False
+        hit_fail = False
+        for row in range(arr.shape[0]):
+            for col in range(arr.shape[1]):
+                tag = _classify_pixel(tuple(arr[row, col]))
+                if tag == "PASS":
+                    hit_pass = True
+                elif tag == "FAIL":
+                    hit_fail = True
+                if hit_pass and hit_fail:
                     break
-            if found_green and found_red:
+            if hit_pass and hit_fail:
                 break
-
-        if found_green and not found_red:
-            return "GREEN"
-        if found_red and not found_green:
-            return "RED"
+        if hit_pass and not hit_fail:
+            return "PASS"
+        if hit_fail and not hit_pass:
+            return "FAIL"
     except Exception:
         pass
 
-    color = get_box_color(x, y, w, h)
-    return check_color_matches(color)
+    avg = _sample_rgb(x, y, w, h)
+    for ref in PALETTE_PASS[:3]:
+        if _dist(avg, ref) < 40:
+            return "PASS"
+    for ref in PALETTE_FAIL[:3]:
+        if _dist(avg, ref) < 35:
+            return "FAIL"
+    for ref in PALETTE_NEUTRAL:
+        if _dist(avg, ref) < 40:
+            return "NEUTRAL"
+    for ref in PALETTE_PASS:
+        if _dist(avg, ref) < 45:
+            return "PASS"
+    for ref in PALETTE_FAIL:
+        if _dist(avg, ref) < 45:
+            return "FAIL"
+    return "UNKNOWN"
 
 
-def get_resolution():
-    w, h = pyautogui.size()
-    return f"{w}x{h}"
-
-
-def get_box_position():
-    resolution = get_resolution()
-    screen_width, screen_height = pyautogui.size()
-    settings = RESOLUTION_POSITIONS.get(resolution, RESOLUTION_POSITIONS["1920x1080"])
-    box_width = settings["box_width"]
-    box_height = settings["box_height"]
-    box_y_ratio = settings["box_y_ratio"]
-    box_x = (screen_width - box_width) // 2
-    box_y = int(screen_height * box_y_ratio)
-    return (box_x, box_y, box_width, box_height)
-
-
-def generate_random_4char():
-    return "".join(random.choices(CHARS, k=LENGTH))
-
-
-def force_topmost(windows):
-    if win32gui is None:
+def _force_on_top(handles):
+    if not _WIN:
         return
     try:
-        for win in windows:
-            if hasattr(win, 'winfo_id'):
-                hwnd = win32gui.GetParent(win.winfo_id())
+        for h in handles:
+            if hasattr(h, "winfo_id"):
+                hwnd = win32gui.GetParent(h.winfo_id())
                 win32gui.SetWindowPos(
                     hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
                     win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
@@ -222,209 +213,200 @@ def force_topmost(windows):
         pass
 
 
-class SimpleBorder:
-    def __init__(self, x, y, w, h, border_thickness=4):
-        self.x = x
-        self.y = y
-        self.width = w
-        self.height = h
-        self.thickness = border_thickness
-        self.windows = []
-        self._create()
+class _Frame:
+    def __init__(self, x, y, w, h, thick=4):
+        self.x, self.y, self.w, self.h, self.t = x, y, w, h, thick
+        self.handles = []
+        self._build()
 
-    def _create(self):
-        top = tk.Tk()
-        top.overrideredirect(True)
-        top.configure(background=BORDER_COLOR)
-        top.geometry(f"{self.width}x{self.thickness}+{self.x}+{self.y}")
-        top.attributes('-topmost', True)
-        top.lift()
-        self.windows.append(top)
+    def _build(self):
+        root = tk.Tk()
+        root.overrideredirect(True)
+        root.configure(background=FRAME_TINT)
+        root.geometry(f"{self.w}x{self.t}+{self.x}+{self.y}")
+        root.attributes("-topmost", True)
+        root.lift()
+        self.handles.append(root)
 
-        bottom = tk.Toplevel()
-        bottom.overrideredirect(True)
-        bottom.configure(background=BORDER_COLOR)
-        bottom.geometry(f"{self.width}x{self.thickness}+{self.x}+{self.y + self.height - self.thickness}")
-        bottom.attributes('-topmost', True)
-        bottom.lift()
-        self.windows.append(bottom)
+        for name, geom in (
+            ("b", f"{self.w}x{self.t}+{self.x}+{self.y + self.h - self.t}"),
+            ("l", f"{self.t}x{self.h}+{self.x}+{self.y}"),
+            ("r", f"{self.t}x{self.h}+{self.x + self.w - self.t}+{self.y}"),
+        ):
+            sub = tk.Toplevel()
+            sub.overrideredirect(True)
+            sub.configure(background=FRAME_TINT)
+            sub.geometry(geom)
+            sub.attributes("-topmost", True)
+            sub.lift()
+            self.handles.append(sub)
 
-        left = tk.Toplevel()
-        left.overrideredirect(True)
-        left.configure(background=BORDER_COLOR)
-        left.geometry(f"{self.thickness}x{self.height}+{self.x}+{self.y}")
-        left.attributes('-topmost', True)
-        left.lift()
-        self.windows.append(left)
+        for w in self.handles:
+            w.update()
+        _force_on_top(self.handles)
 
-        right = tk.Toplevel()
-        right.overrideredirect(True)
-        right.configure(background=BORDER_COLOR)
-        right.geometry(f"{self.thickness}x{self.height}+{self.x + self.width - self.thickness}+{self.y}")
-        right.attributes('-topmost', True)
-        right.lift()
-        self.windows.append(right)
-
-        for win in self.windows:
-            win.update()
-        force_topmost(self.windows)
-
-    def update(self):
-        for win in self.windows:
+    def lift(self):
+        for w in self.handles:
             try:
-                win.attributes('-topmost', True)
-                win.lift()
-                win.update()
+                w.attributes("-topmost", True)
+                w.lift()
+                w.update()
             except Exception:
                 pass
-        force_topmost(self.windows)
+        _force_on_top(self.handles)
 
-    def destroy(self):
-        for win in self.windows:
+    def close(self):
+        for w in self.handles:
             try:
-                win.destroy()
+                w.destroy()
             except Exception:
                 pass
-        self.windows = []
+        self.handles = []
 
 
-def send_webhook(username):
-    now = datetime.datetime.now()
-    ts = now.isoformat()
-    unix_ts = int(now.timestamp())
-    formatted = now.strftime("%Y-%m-%d %H:%M:%S")
+def build_candidate():
+    return "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
 
-    colors = [5793266, 5763719, 3066993, 2067276, 3447003]
 
-    embed = {
-        "title": "Pseudo dispo",
-        "description": f"```{username}```",
-        "color": random.choice(colors),
-        "fields": [
-            {"name": "Longueur", "value": "4 caracteres", "inline": True},
-            {"name": "Timestamp", "value": f"<t:{unix_ts}:F>\n<t:{unix_ts}:R>", "inline": True},
-        ],
-        "image": {"url": SNIPE_IMAGE_URL},
-        "footer": {"text": f"4char checker • {formatted}"},
-        "timestamp": ts,
+def post_result(name):
+    ts = int(datetime.datetime.now().timestamp())
+    pal = [5793266, 5763719, 3066993, 2067276, 3447003]
+    payload = {
+        "content": f"**Available:** `{name}`",
+        "username": "4char",
+        "embeds": [{
+            "title": "Username available",
+            "description": f"```{name}```",
+            "color": random.choice(pal),
+            "fields": [
+                {"name": "Length", "value": "4 characters", "inline": True},
+                {"name": "Found", "value": f"<t:{ts}:R>", "inline": True},
+            ],
+            "timestamp": datetime.datetime.now().isoformat(),
+        }],
     }
+    try:
+        r = requests.post(HOOK, json=payload, timeout=10)
+        if r.status_code == 204:
+            print(f"{ANSI_GRN}[hook] sent{ANSI_RST}")
+        else:
+            print(f"{ANSI_RED}[hook] http {r.status_code}{ANSI_RST}")
+    except Exception as e:
+        print(f"{ANSI_RED}[hook] {e}{ANSI_RST}")
 
-    data = {
-        "content": f"**Pseudo dispo:** `{username}`",
-        "embeds": [embed],
-        "username": "4char Sniper",
-    }
+
+def _read_status(box):
+    hits = []
+    for _ in range(SAMPLES):
+        hits.append(scan_region(box))
+        _jitter(SAMPLE_GAP, 0.02)
+    if "PASS" in hits:
+        return "PASS"
+    if hits.count("FAIL") >= 2:
+        return "FAIL"
+    from collections import Counter
+    return Counter(hits).most_common(1)[0][0]
+
+
+def _wait_cycle(state):
+    state["n"] += 1
+    if state["n"] >= DRIFT_EVERY:
+        state["n"] = 0
+        pause = random.uniform(DRIFT_MIN, DRIFT_MAX)
+        print(f"{ANSI_DIM}[rest] {pause:.1f}s{ANSI_RST}")
+        time.sleep(pause)
+        return
+    time.sleep(random.uniform(TICK_MIN, TICK_MAX))
+
+
+def _interrupt(_):
+    global _stop
+    _stop = True
+
+
+def main():
+    global _stop
+    _stop = False
+
+    if os.name == "nt":
+        os.system("color")
+
+    _cls()
+    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}")
+    print(f"{ANSI_CYN}  4-char username scanner{ANSI_RST}")
+    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}")
+    print(f"{ANSI_YLW}interval: {TICK_MIN}-{TICK_MAX}s{ANSI_RST}")
+    print(f"{ANSI_YLW}rest every {DRIFT_EVERY} checks{ANSI_RST}")
+    print(f"{ANSI_YLW}ESC to stop{ANSI_RST}")
+    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}\n")
+
+    region = _bounds()
+    print(f"{ANSI_DIM}[init] region={region}{ANSI_RST}")
+
+    frame = _Frame(*region)
+    keyboard.on_press_key("esc", _interrupt)
+
+    state = {"n": 0}
+    tries = 0
 
     try:
-        r = requests.post(WEBHOOK_URL, json=data, timeout=10)
-        if r.status_code == 204:
-            print(f"{G}[webhook] envoye{E}")
-        else:
-            print(f"{R}[webhook] http {r.status_code}{E}")
-    except Exception as e:
-        print(f"{R}[webhook] err {e}{E}")
+        while not _stop:
+            name = build_candidate()
 
+            frame.lift()
 
-class Checker:
-    def __init__(self):
-        self.monitoring_box = get_box_position()
-        print(f"{C}[init] resolution: {get_resolution()}{E}")
-        print(f"{C}[init] box: {self.monitoring_box}{E}")
-        self.border = SimpleBorder(
-            self.monitoring_box[0], self.monitoring_box[1],
-            self.monitoring_box[2], self.monitoring_box[3],
-            border_thickness=4
-        )
+            if random.random() < 0.16:
+                _nudge_cursor()
 
-    def type_username(self, word):
-        self.border.update()
-        pyautogui.hotkey('ctrl', 'a')
-        time.sleep(0.12)
-        pyautogui.press('delete')
-        time.sleep(0.12)
-        self.border.update()
-        pyautogui.write(word, interval=0.025)
-        self.border.update()
-        time.sleep(0.4)
+            pyautogui.hotkey("ctrl", "a")
+            _jitter(0.11, 0.04)
+            pyautogui.press("delete")
+            _jitter(0.11, 0.04)
 
-    def check_color_verified(self):
-        samples = []
-        for _ in range(5):
-            status = check_single_color(self.monitoring_box)
-            samples.append(status)
-            time.sleep(0.08)
+            frame.lift()
+            _human_type(name)
+            frame.lift()
+            _jitter(0.43, 0.14)
 
-        if "GREEN" in samples:
-            return "GREEN"
-        if samples.count("RED") >= 2:
-            return "RED"
-        return Counter(samples).most_common(1)[0][0]
+            status = _read_status(region)
 
-    def run(self):
-        global should_exit
-        should_exit = False
-
-        if os.name == 'nt':
-            os.system('color')
-
-        clear_screen()
-        print(f"{C}{'=' * 50}{E}")
-        print(f"{C}   4 character checker {E}")
-        print(f"{C}{'=' * 50}{E}")
-        print(f"{Y}Delai: {DELAY_BETWEEN}s entre chaque test{E}")
-        print(f"{Y}ESC pour stop{E}")
-        print(f"{C}{'=' * 50}{E}\n")
-
-        keyboard.on_press_key('esc', lambda e: self._stop())
-
-        attempts = 0
-        try:
-            while not should_exit:
-                word = generate_random_4char()
-                self.type_username(word)
-                status = self.check_color_verified()
-
-                if status == "GREEN":
-                    print(f"{G}{B}{word} : false{E}")
-                    print(f"\n{G}{'=' * 50}{E}")
-                    print(f"{G}{B}   PSEUDO DISPONIBLE : {word}{E}")
-                    print(f"{G}{'=' * 50}{E}\n")
-                    send_webhook(word)
-                    self.border.destroy()
-                    keyboard.unhook_all()
-                    print(f"{G}Appuie sur une touche pour quitter.{E}")
-                    keyboard.read_key()
-                    sys.exit(0)
-
-                elif status == "RED":
-                    print(f"{R}{word} : true{E}")
-                else:
-                    print(f"{Y}{word} : {status.lower()}{E}")
-
-                attempts += 1
-                time.sleep(DELAY_BETWEEN)
-
-        except KeyboardInterrupt:
-            print(f"\n{R}stop{E}")
-        except SystemExit:
-            raise
-        finally:
-            try:
-                self.border.destroy()
-            except Exception:
-                pass
-            try:
+            if status == "PASS":
+                print(f"{ANSI_GRN}{name} : false{ANSI_RST}")
+                print(f"\n{ANSI_GRN}{'=' * 48}{ANSI_RST}")
+                print(f"{ANSI_GRN}  FOUND : {name}{ANSI_RST}")
+                print(f"{ANSI_GRN}{'=' * 48}{ANSI_RST}\n")
+                post_result(name)
+                frame.close()
                 keyboard.unhook_all()
-            except Exception:
-                pass
+                print(f"{ANSI_GRN}Press any key to exit.{ANSI_RST}")
+                keyboard.read_key()
+                sys.exit(0)
 
-    def _stop(self):
-        global should_exit
-        should_exit = True
+            elif status == "FAIL":
+                print(f"{ANSI_RED}{name} : true{ANSI_RST}")
+            else:
+                print(f"{ANSI_YLW}{name} : {status.lower()}{ANSI_RST}")
+
+            tries += 1
+            _wait_cycle(state)
+
+    except KeyboardInterrupt:
+        print(f"\n{ANSI_RED}stopped{ANSI_RST}")
+    except SystemExit:
+        raise
+    finally:
+        try:
+            frame.close()
+        except Exception:
+            pass
+        try:
+            keyboard.unhook_all()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
-    if win32gui is not None:
+    if _WIN:
         try:
             hwnd = win32gui.GetForegroundWindow()
             win32gui.SetWindowPos(
@@ -434,8 +416,7 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-    print(f"{C}Place le curseur dans le champ pseudo Discord, puis appuie sur Entree.{E}")
+    print(f"{ANSI_CYN}Click the Discord username field, then press any key.{ANSI_RST}")
     keyboard.read_key()
 
-    checker = Checker()
-    checker.run()
+    main()
