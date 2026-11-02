@@ -7,7 +7,8 @@ paste this in your terminal/cmd
 git clone https://github.com/cnPthPiGon/A_DBlueD.git
 
 
-after paste this
+after paste this :
+
 cd A_DBlueD
 
 
