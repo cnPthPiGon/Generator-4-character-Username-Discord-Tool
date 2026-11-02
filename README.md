@@ -9,7 +9,7 @@ Installation
 First, paste this into your terminal/cmd:
 
 ```bash
-git clone https://github.com/cnPthPiGon/A_DBlueD.git
+git clone https://github.com/cnPthPiGon/Generator-4-character-Username-Discord-Tool.git
 ```
 
 Then, go inside the folder:
