@@ -23,7 +23,7 @@ After that, install the requirements:
 pip install -r requirements.txt
 ```
 
-Version 1 – GeneratorChecker Discord
+Version 1 – GeneratorChecker Discord (Deleted)
 
 To run Version 1, just paste this into your terminal/cmd:
 
