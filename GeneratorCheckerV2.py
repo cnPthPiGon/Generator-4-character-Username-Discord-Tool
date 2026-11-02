@@ -10,6 +10,7 @@ import datetime
 
 import pyautogui
 import numpy as np
+import tkinter as tk
 import keyboard
 import requests
 
@@ -39,13 +40,6 @@ ASCII_HEAD = r"""
  | |__| \__ \  __/ |  | | | | (_| | | | | | |  __/ | |____| | | |  __/ (__|   <  __/ |    | |__| | \__ \ (_| (_) | | | (_| |                                                              
   \____/|___/\___|_|  |_| |_|\__,_|_| |_| |_|\___|  \_____|_| |_|\___|\___|_|\_\___|_|    |_____/|_|___/\___\___/|_|  \__,_|                                                              
 """
-
-SCREEN_MAP = {
-    "2560x1440": (410, 60, 0.479),
-    "1920x1440": (410, 60, 0.479),
-    "1920x1200": (410, 60, 0.479),
-    "1920x1080": (410, 60, 0.479),
-}
 
 PALETTE_PASS = [
     (87, 242, 135),
@@ -122,14 +116,7 @@ ANSI_DIM = "\033[90m"
 ANSI_RST = "\033[0m"
 
 _stop = False
-
-
-def _cls():
-    os.system("cls" if os.name == "nt" else "clear")
-
-
-def _center(text, width=80):
-    return "\n".join(line.center(width) for line in text.split("\n"))
+_region = None
 
 
 def _dist(a, b):
@@ -137,15 +124,6 @@ def _dist(a, b):
         return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 * 1.2 + (a[2] - b[2]) ** 2 * 0.8) ** 0.5
     except OverflowError:
         return 999
-
-
-def _bounds():
-    w, h = pyautogui.size()
-    tag = f"{w}x{h}"
-    bw, bh, ratio = SCREEN_MAP.get(tag, SCREEN_MAP["1920x1080"])
-    bx = (w - bw) // 2
-    by = int(h * ratio)
-    return bx, by, bw, bh
 
 
 def _jitter(base, span=0.35):
@@ -333,8 +311,92 @@ def _interrupt(_):
     _stop = True
 
 
+class RegionPicker:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Zone selector")
+        self.root.attributes("-topmost", True)
+        self.root.attributes("-alpha", 0.35)
+        self.root.overrideredirect(True)
+        self.root.geometry("410x60+100+100")
+        self.root.configure(bg="#8A2BE2")
+
+        self.canvas = tk.Canvas(self.root, bg="#8A2BE2", highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+
+        self.canvas.create_text(
+            205, 30,
+            text="DRAG ME",
+            fill="white",
+            font=("Arial", 14, "bold")
+        )
+
+        self.canvas.bind("<Button-1>", self._start_move)
+        self.canvas.bind("<B1-Motion>", self._do_move)
+
+        self.root.bind("<Button-3>", self._start_resize)
+        self.root.bind("<B3-Motion>", self._do_resize)
+
+        self.root.bind("<Return>", self._confirm)
+        self.root.bind("<Escape>", self._cancel)
+
+        self.start_x = 0
+        self.start_y = 0
+        self.start_w = 0
+        self.start_h = 0
+        self.result = None
+
+        print(f"{ANSI_CYN}[picker] drag with left click, resize with right click{ANSI_RST}")
+        print(f"{ANSI_CYN}[picker] ENTER to confirm, ESC to cancel{ANSI_RST}")
+
+    def _start_move(self, event):
+        self.start_x = event.x_root - self.root.winfo_x()
+        self.start_y = event.y_root - self.root.winfo_y()
+
+    def _do_move(self, event):
+        nx = event.x_root - self.start_x
+        ny = event.y_root - self.start_y
+        self.root.geometry(f"+{nx}+{ny}")
+
+    def _start_resize(self, event):
+        self.start_w = event.x_root - self.root.winfo_x()
+        self.start_h = event.y_root - self.root.winfo_y()
+
+    def _do_resize(self, event):
+        w = max(50, event.x_root - self.root.winfo_x())
+        h = max(20, event.y_root - self.root.winfo_y())
+        self.root.geometry(f"{w}x{h}+{self.root.winfo_x()}+{self.root.winfo_y()}")
+
+    def _confirm(self, event=None):
+        x = self.root.winfo_x()
+        y = self.root.winfo_y()
+        w = self.root.winfo_width()
+        h = self.root.winfo_height()
+        self.result = (x, y, w, h)
+        self.root.destroy()
+
+    def _cancel(self, event=None):
+        self.result = None
+        self.root.destroy()
+
+    def run(self):
+        self.root.mainloop()
+        return self.result
+
+
+def pick_region():
+    global _region
+    picker = RegionPicker()
+    result = picker.run()
+    if result is None:
+        print(f"{ANSI_RED}[picker] cancelled{ANSI_RST}")
+        sys.exit(0)
+    _region = result
+    print(f"{ANSI_GRN}[picker] region={result}{ANSI_RST}")
+
+
 def main():
-    global _stop
+    global _stop, _region
     _stop = False
 
     if os.name == "nt":
@@ -345,7 +407,7 @@ def main():
     except Exception:
         term_w = 80
 
-    _cls()
+    os.system("cls" if os.name == "nt" else "clear")
     print(f"{ANSI_RED}{_center(ASCII_HEAD, term_w)}{ANSI_RST}")
     print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}")
     print(f"{ANSI_YLW}ocr      : {'active' if _OCR else 'disabled'}{ANSI_RST}")
@@ -355,8 +417,10 @@ def main():
     print(f"{ANSI_YLW}stop     : ESC{ANSI_RST}")
     print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}\n")
 
-    region = _bounds()
-    print(f"{ANSI_DIM}[init] region={region}{ANSI_RST}")
+    print(f"{ANSI_CYN}Click the Discord username field, then press any key.{ANSI_RST}")
+    keyboard.read_key()
+
+    pick_region()
 
     keyboard.on_press_key("esc", _interrupt)
 
@@ -377,7 +441,7 @@ def main():
             _human_type(name)
             _jitter(0.48, 0.15)
 
-            status = _read_status(region)
+            status = _read_status(_region)
 
             if status == "PASS":
                 print(f"{ANSI_GRN}{name} : false{ANSI_RST}")
@@ -408,6 +472,10 @@ def main():
             pass
 
 
+def _center(text, width=80):
+    return "\n".join(line.center(width) for line in text.split("\n"))
+
+
 if __name__ == "__main__":
     try:
         pytesseract.get_tesseract_version()
@@ -416,8 +484,5 @@ if __name__ == "__main__":
         print(f"{ANSI_RED}install: https://github.com/UB-Mannheim/tesseract/wiki{ANSI_RST}")
         print(f"{ANSI_YLW}continuing with color-only detection{ANSI_RST}")
         _OCR = False
-
-    print(f"{ANSI_CYN}Click the Discord username field, then press any key.{ANSI_RST}")
-    keyboard.read_key()
 
     main()
