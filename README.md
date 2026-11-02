@@ -1,4 +1,4 @@
-# A_DBlueD
+# Generator 4 characters Username Discord
 I'll make updates if there are any bugs
 Made By Chxris & Rixer95-x2 In Youtube
 
