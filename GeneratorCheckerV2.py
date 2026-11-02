@@ -314,13 +314,11 @@ def _interrupt(_):
 class RegionPicker:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Place this on the Discord message")
+        self.root.title("Place on the Discord message")
         self.root.attributes("-topmost", True)
         self.root.configure(bg="#8A2BE2")
-        self.root.geometry("410x30+200+200")
+        self.root.geometry("400x22+200+120")
         self.root.resizable(True, True)
-
-        self.root.overrideredirect(False)
         self.root.attributes("-alpha", 0.75)
 
         self.root.bind("<Return>", self._confirm)
@@ -332,10 +330,10 @@ class RegionPicker:
         self.canvas.pack(fill="both", expand=True)
 
         self.canvas.create_text(
-            200, 15,
+            200, 11,
             text="MOVE ME  •  ENTER = OK  •  ESC = CANCEL",
             fill="white",
-            font=("Arial", 9, "bold")
+            font=("Arial", 7, "bold")
         )
 
         self.canvas.bind("<Button-1>", self._start_move)
@@ -344,8 +342,8 @@ class RegionPicker:
         self.result = None
 
         print(f"{ANSI_CYN}[picker] drag with left click to move{ANSI_RST}")
-        print(f"{ANSI_CYN}[picker] resize with the window corners{ANSI_RST}")
-        print(f"{ANSI_CYN}[picker] ENTER to confirm, ESC to cancel{ANSI_RST}")
+        print(f"{ANSI_CYN}[picker] resize with window corners{ANSI_RST}")
+        print(f"{ANSI_CYN}[picker] ENTER confirm, ESC cancel{ANSI_RST}")
 
     def _start_move(self, event):
         self.root._offset_x = event.x_root - self.root.winfo_x()
@@ -386,12 +384,11 @@ def pick_region():
 
 def wait_for_click():
     print(f"{ANSI_CYN}Click the Discord username field to continue...{ANSI_RST}")
-    print(f"{ANSI_DIM}waiting for mouse click...{ANSI_RST}")
-
+    print(f"{ANSI_DIM}waiting for ENTER...{ANSI_RST}")
     keyboard.wait("enter")
     time.sleep(0.3)
+    print(f"{ANSI_GRN}[detected] proceed{ANSI_RST}")
 
-    print(f"{ANSI_GRN}[detected] proceed{E}")
 
 def main():
     global _stop, _region
