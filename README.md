@@ -14,7 +14,7 @@ git clone https://github.com/cnPthPiGon/Generator-4-character-Username-Discord-T
 
 Then, go inside the folder:
 ```bash
-cd A_DBlueD
+cd Generator-4-character-Username-Discord-Tool
 ```
 
 After that, install the requirements:
