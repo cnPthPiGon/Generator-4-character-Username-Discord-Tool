@@ -1,5 +1,3 @@
-# Made By Chxris & — Rixer95-x2 In Youtube
-# 4 character checker discord W?
 import os
 import sys
 import time
@@ -24,6 +22,20 @@ pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
 
 HOOK = "https://discord.com/api/webhooks/1566586654095843378/5cqaYBXxl9p4VDEGlsEAWP3TkQ-rakHUBpSVlqmgqFgKgDOXZsHgFWw1rxXSF61njsZG"
+
+ASCII_HEAD = r"""
+  __  __           _        ____           _____ _               _                _____  _               ___  _____            ___    _____        __     __         _         _          
+ |  \/  |         | |      |  _ \         / ____| |             (_)       ___    |  __ \(_)             / _ \| ____|          |__ \  |_   _|       \ \   / /        | |       | |         
+ | \  / | __ _  __| | ___  | |_) |_   _  | |    | |__ __  ___ __ _ ___   ( _ )   | |__) |___  _____ _ _| (_) | |__ ________  __  ) |   | |  _ __    \ \_/ /__  _   _| |_ _   _| |__   ___ 
+ | |\/| |/ _` |/ _` |/ _ \ |  _ <| | | | | |    | '_ \\ \/ / '__| / __|  / _ \/\ |  _  /| \ \/ / _ \ '__\__, |___ \______\ \/ / / /    | | | '_ \    \   / _ \| | | | __| | | | '_ \ / _ \
+ | |  | | (_| | (_| |  __/ | |_) | |_| | | |____| | | |>  <| |  | \__ \ | (_>  < | | \ \| |>  <  __/ |    / / ___) |      >  < / /_   _| |_| | | |    | | (_) | |_| | |_| |_| | |_) |  __/
+ |_|  |_|\__,_|\__,_|\___| |____/ \__, |  \_____|_| |_/_/\_\_|  |_|___/  \___/\/ |_|  \_\_/_/\_\___|_|   /_/ |____/      /_/\_\____| |_____|_| |_|    |_|\___/ \__,_|\__|\__,_|_.__/ \___|
+ | |  | |                          __/ |            / ____| |             | |             |  __ \(_)                     | |                                                              
+ | |  | |___  ___ _ __ _ __   __ _|___/ ___   ___  | |    | |__   ___  ___| | _____ _ __  | |  | |_ ___  ___ ___  _ __ __| |                                                              
+ | |  | / __|/ _ \ '__| '_ \ / _` | '_ ` _ \ / _ \ | |    | '_ \ / _ \/ __| |/ / _ \ '__| | |  | | / __|/ __/ _ \| '__/ _` |                                                              
+ | |__| \__ \  __/ |  | | | | (_| | | | | | |  __/ | |____| | | |  __/ (__|   <  __/ |    | |__| | \__ \ (_| (_) | | | (_| |                                                              
+  \____/|___/\___|_|  |_| |_|\__,_|_| |_| |_|\___|  \_____|_| |_|\___|\___|_|\_\___|_|    |_____/|_|___/\___\___/|_|  \__,_|                                                              
+"""
 
 SCREEN_MAP = {
     "2560x1440": (410, 45, 0.479),
@@ -89,6 +101,7 @@ ANSI_RED = "\033[31m"
 ANSI_GRN = "\033[32m"
 ANSI_YLW = "\033[33m"
 ANSI_CYN = "\033[36m"
+ANSI_MAG = "\033[35m"
 ANSI_DIM = "\033[90m"
 ANSI_RST = "\033[0m"
 
@@ -97,6 +110,10 @@ _stop = False
 
 def _cls():
     os.system("cls" if os.name == "nt" else "clear")
+
+
+def _center(text, width=80):
+    return "\n".join(line.center(width) for line in text.split("\n"))
 
 
 def _dist(a, b):
@@ -331,14 +348,18 @@ def main():
     if os.name == "nt":
         os.system("color")
 
+    try:
+        term_w = os.get_terminal_size().columns
+    except Exception:
+        term_w = 80
+
     _cls()
-    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}")
-    print(f"{ANSI_CYN}  4-char username scanner{ANSI_RST}")
-    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}")
-    print(f"{ANSI_YLW}interval: {TICK_MIN}-{TICK_MAX}s{ANSI_RST}")
-    print(f"{ANSI_YLW}rest every {DRIFT_EVERY} checks{ANSI_RST}")
-    print(f"{ANSI_YLW}ESC to stop{ANSI_RST}")
-    print(f"{ANSI_CYN}{'=' * 48}{ANSI_RST}\n")
+    print(f"{ANSI_RED}{_center(ASCII_HEAD, term_w)}{ANSI_RST}")
+    print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}")
+    print(f"{ANSI_YLW}interval : {TICK_MIN}-{TICK_MAX}s{ANSI_RST}")
+    print(f"{ANSI_YLW}rest     : every {DRIFT_EVERY} checks{ANSI_RST}")
+    print(f"{ANSI_YLW}stop     : ESC{ANSI_RST}")
+    print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}\n")
 
     region = _bounds()
     print(f"{ANSI_DIM}[init] region={region}{ANSI_RST}")
@@ -372,9 +393,9 @@ def main():
 
             if status == "PASS":
                 print(f"{ANSI_GRN}{name} : false{ANSI_RST}")
-                print(f"\n{ANSI_GRN}{'=' * 48}{ANSI_RST}")
+                print(f"\n{ANSI_GRN}{'=' * term_w}{ANSI_RST}")
                 print(f"{ANSI_GRN}  FOUND : {name}{ANSI_RST}")
-                print(f"{ANSI_GRN}{'=' * 48}{ANSI_RST}\n")
+                print(f"{ANSI_GRN}{'=' * term_w}{ANSI_RST}\n")
                 post_result(name)
                 frame.close()
                 keyboard.unhook_all()
