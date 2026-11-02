@@ -1,3 +1,6 @@
+# Made By Chxris & — Rixer95-x2 In Youtube
+# 4 character checker discord W?
+
 import os
 import sys
 import time
@@ -7,23 +10,16 @@ import datetime
 
 import pyautogui
 import numpy as np
-import tkinter as tk
 import keyboard
 import requests
 
+from PIL import Image, ImageOps, ImageFilter
+
 try:
     import pytesseract
-    from PIL import Image
     _OCR = True
 except ImportError:
     _OCR = False
-
-try:
-    import win32gui
-    import win32con
-    _WIN = True
-except ImportError:
-    _WIN = False
 
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
@@ -51,10 +47,53 @@ SCREEN_MAP = {
     "1920x1080": (410, 60, 0.479),
 }
 
+PALETTE_PASS = [
+    (87, 242, 135),
+    (40, 92, 54),
+    (57, 150, 81),
+    (51, 126, 70),
+    (46, 204, 113),
+    (80, 220, 100),
+    (118, 172, 63),
+    (47, 114, 65),
+    (49, 122, 69),
+    (59, 157, 84),
+    (57, 151, 81),
+    (58, 155, 83),
+    (53, 140, 76),
+    (60, 179, 113),
+    (46, 139, 87),
+    (152, 251, 152),
+]
+
+PALETTE_FAIL = [
+    (237, 66, 69),
+    (229, 57, 53),
+    (170, 88, 87),
+    (106, 58, 58),
+    (235, 117, 113),
+    (151, 79, 78),
+    (188, 97, 95),
+    (255, 99, 71),
+    (205, 92, 92),
+    (220, 20, 60),
+]
+
+PALETTE_NEUTRAL = [
+    (88, 101, 242),
+    (78, 93, 148),
+    (60, 60, 65),
+    (53, 54, 56),
+    (41, 28, 54),
+    (72, 73, 75),
+    (56, 57, 60),
+]
+
 PASS_WORDS = [
     "disponible", "available", "verfügbar", "disponibile", "disponível",
     "beschikbaar", "dostępna", "dostępny", "可用", "使用可能", "사용 가능",
-    "available", "frei", "libre", "vacant", "offen", "nice", "parfait",
+    "frei", "libre", "vacant", "offen", "parfait", "perfect", "perfekt",
+    "dispo", "usable", "verfugbar", "verfuegbar",
 ]
 
 FAIL_WORDS = [
@@ -62,9 +101,9 @@ FAIL_WORDS = [
     "non disponibile", "indisponível", "niet beschikbaar", "niedostępna",
     "不可用", "使用できません", "사용할 수 없", "pris", "taken", "belegt",
     "occupé", "occupato", "ocupado", "bezet", "zajęta", "essaie", "try",
+    "nicht verfugbar", "nicht verfuegbar", "no disponible", "non disponible",
 ]
 
-FRAME_TINT = "#6A0DAD"
 TICK_MIN = 1.4
 TICK_MAX = 2.5
 DRIFT_EVERY = 28
@@ -72,6 +111,8 @@ DRIFT_MIN = 5.0
 DRIFT_MAX = 16.0
 TYPE_MIN = 0.04
 TYPE_MAX = 0.13
+SAMPLES = 3
+SAMPLE_GAP = 0.09
 
 ANSI_RED = "\033[31m"
 ANSI_GRN = "\033[32m"
@@ -89,6 +130,13 @@ def _cls():
 
 def _center(text, width=80):
     return "\n".join(line.center(width) for line in text.split("\n"))
+
+
+def _dist(a, b):
+    try:
+        return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 * 1.2 + (a[2] - b[2]) ** 2 * 0.8) ** 0.5
+    except OverflowError:
+        return 999
 
 
 def _bounds():
@@ -116,24 +164,98 @@ def _human_type(text):
 def _nudge_cursor():
     try:
         x, y = pyautogui.position()
-        pyautogui.moveTo(x + random.randint(-3, 3), y + random.randint(-2, 2),
-                         duration=random.uniform(0.04, 0.13))
+        pyautogui.moveTo(
+            x + random.randint(-3, 3),
+            y + random.randint(-2, 2),
+            duration=random.uniform(0.04, 0.13)
+        )
     except Exception:
         pass
 
 
-def read_region(box):
+def _sample_rgb(x, y, w, h):
+    img = pyautogui.screenshot(region=(x, y, w, h))
+    arr = np.array(img)
+    avg = np.mean(arr, axis=(0, 1))
+    return tuple(int(v) for v in avg)
+
+
+def _classify_pixel(px):
+    for ref in PALETTE_PASS[:6]:
+        if _dist(px, ref) < 32:
+            return "PASS"
+    for ref in PALETTE_FAIL[:6]:
+        if _dist(px, ref) < 35:
+            return "FAIL"
+    return None
+
+
+def _scan_colors(box):
+    x, y, w, h = box
+    try:
+        img = pyautogui.screenshot(region=(x, y, w, h))
+        arr = np.array(img)
+        hit_pass = False
+        hit_fail = False
+        for row in range(arr.shape[0]):
+            for col in range(arr.shape[1]):
+                tag = _classify_pixel(tuple(arr[row, col]))
+                if tag == "PASS":
+                    hit_pass = True
+                elif tag == "FAIL":
+                    hit_fail = True
+                if hit_pass and hit_fail:
+                    break
+            if hit_pass and hit_fail:
+                break
+        if hit_pass and not hit_fail:
+            return "PASS"
+        if hit_fail and not hit_pass:
+            return "FAIL"
+    except Exception:
+        pass
+
+    avg = _sample_rgb(x, y, w, h)
+    for ref in PALETTE_PASS[:3]:
+        if _dist(avg, ref) < 40:
+            return "PASS"
+    for ref in PALETTE_FAIL[:3]:
+        if _dist(avg, ref) < 35:
+            return "FAIL"
+    for ref in PALETTE_NEUTRAL:
+        if _dist(avg, ref) < 40:
+            return "NEUTRAL"
+    for ref in PALETTE_PASS:
+        if _dist(avg, ref) < 45:
+            return "PASS"
+    for ref in PALETTE_FAIL:
+        if _dist(avg, ref) < 45:
+            return "FAIL"
+    return "UNKNOWN"
+
+
+def _scan_text(box):
     if not _OCR:
         return "UNKNOWN"
     x, y, w, h = box
     try:
         img = pyautogui.screenshot(region=(x, y, w, h))
         img = img.convert("L")
-        img = img.point(lambda p: 255 if p > 140 else 0)
-        text = pytesseract.image_to_string(img, lang="eng+fra+deu+spa+ita+por+nld+pol+jpn+kor+chi_sim").lower()
+        img = img.resize((w * 4, h * 4), Image.LANCZOS)
+        img = ImageOps.invert(img)
+        img = img.filter(ImageFilter.SHARPEN)
+        img = img.point(lambda p: 255 if p > 110 else 0, "1")
+
+        text = pytesseract.image_to_string(
+            img,
+            lang="eng+fra+deu+spa+ita+por+nld+pol+jpn+kor+chi_sim",
+            config="--psm 7 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZàâäéèêëîïôöùûüçñáíóúüß?!. ",
+        ).lower()
         text = text.replace("\n", " ").replace("  ", " ").strip()
-        if not text:
+
+        if not text or len(text) < 3:
             return "UNKNOWN"
+
         for w in FAIL_WORDS:
             if w in text:
                 return "FAIL"
@@ -145,70 +267,23 @@ def read_region(box):
         return "UNKNOWN"
 
 
-def _force_on_top(handles):
-    if not _WIN:
-        return
-    try:
-        for h in handles:
-            if hasattr(h, "winfo_id"):
-                hwnd = win32gui.GetParent(h.winfo_id())
-                win32gui.SetWindowPos(
-                    hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
-                    win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
-                )
-    except Exception:
-        pass
+def _read_status(box):
+    hits_text = []
+    hits_color = []
+    for _ in range(SAMPLES):
+        hits_text.append(_scan_text(box))
+        hits_color.append(_scan_colors(box))
+        _jitter(SAMPLE_GAP, 0.03)
 
-
-class _Frame:
-    def __init__(self, x, y, w, h, thick=4):
-        self.x, self.y, self.w, self.h, self.t = x, y, w, h, thick
-        self.handles = []
-        self._build()
-
-    def _build(self):
-        root = tk.Tk()
-        root.overrideredirect(True)
-        root.configure(background=FRAME_TINT)
-        root.geometry(f"{self.w}x{self.t}+{self.x}+{self.y}")
-        root.attributes("-topmost", True)
-        root.lift()
-        self.handles.append(root)
-
-        for name, geom in (
-            ("b", f"{self.w}x{self.t}+{self.x}+{self.y + self.h - self.t}"),
-            ("l", f"{self.t}x{self.h}+{self.x}+{self.y}"),
-            ("r", f"{self.t}x{self.h}+{self.x + self.w - self.t}+{self.y}"),
-        ):
-            sub = tk.Toplevel()
-            sub.overrideredirect(True)
-            sub.configure(background=FRAME_TINT)
-            sub.geometry(geom)
-            sub.attributes("-topmost", True)
-            sub.lift()
-            self.handles.append(sub)
-
-        for w in self.handles:
-            w.update()
-        _force_on_top(self.handles)
-
-    def lift(self):
-        for w in self.handles:
-            try:
-                w.attributes("-topmost", True)
-                w.lift()
-                w.update()
-            except Exception:
-                pass
-        _force_on_top(self.handles)
-
-    def close(self):
-        for w in self.handles:
-            try:
-                w.destroy()
-            except Exception:
-                pass
-        self.handles = []
+    if "FAIL" in hits_text:
+        return "FAIL"
+    if "PASS" in hits_text:
+        return "PASS"
+    if "FAIL" in hits_color:
+        return "FAIL"
+    if "PASS" in hits_color:
+        return "PASS"
+    return "UNKNOWN"
 
 
 def build_candidate():
@@ -242,18 +317,6 @@ def post_result(name):
         print(f"{ANSI_RED}[hook] {e}{ANSI_RST}")
 
 
-def _read_status(box):
-    hits = []
-    for _ in range(3):
-        hits.append(read_region(box))
-        _jitter(0.1, 0.03)
-    if "PASS" in hits:
-        return "PASS"
-    if hits.count("FAIL") >= 1:
-        return "FAIL"
-    return "UNKNOWN"
-
-
 def _wait_cycle(state):
     state["n"] += 1
     if state["n"] >= DRIFT_EVERY:
@@ -274,11 +337,6 @@ def main():
     global _stop
     _stop = False
 
-    if not _OCR:
-        print(f"{ANSI_RED}pytesseract manquant. pip install pytesseract pillow{ANSI_RST}")
-        print(f"{ANSI_RED}Installe aussi Tesseract OCR : https://github.com/UB-Mannheim/tesseract/wiki{ANSI_RST}")
-        return
-
     if os.name == "nt":
         os.system("color")
 
@@ -290,15 +348,16 @@ def main():
     _cls()
     print(f"{ANSI_RED}{_center(ASCII_HEAD, term_w)}{ANSI_RST}")
     print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}")
-    print(f"{ANSI_YLW}mode     : OCR multi-langue{ANSI_RST}")
+    print(f"{ANSI_YLW}ocr      : {'active' if _OCR else 'disabled'}{ANSI_RST}")
+    print(f"{ANSI_YLW}mode     : colors + text multi-lang{ANSI_RST}")
     print(f"{ANSI_YLW}interval : {TICK_MIN}-{TICK_MAX}s{ANSI_RST}")
+    print(f"{ANSI_YLW}rest     : every {DRIFT_EVERY} checks{ANSI_RST}")
     print(f"{ANSI_YLW}stop     : ESC{ANSI_RST}")
     print(f"{ANSI_CYN}{'=' * term_w}{ANSI_RST}\n")
 
     region = _bounds()
     print(f"{ANSI_DIM}[init] region={region}{ANSI_RST}")
 
-    frame = _Frame(*region)
     keyboard.on_press_key("esc", _interrupt)
 
     state = {"n": 0}
@@ -306,8 +365,6 @@ def main():
     try:
         while not _stop:
             name = build_candidate()
-
-            frame.lift()
 
             if random.random() < 0.16:
                 _nudge_cursor()
@@ -317,10 +374,8 @@ def main():
             pyautogui.press("delete")
             _jitter(0.11, 0.04)
 
-            frame.lift()
             _human_type(name)
-            frame.lift()
-            _jitter(0.5, 0.15)
+            _jitter(0.48, 0.15)
 
             status = _read_status(region)
 
@@ -330,7 +385,6 @@ def main():
                 print(f"{ANSI_GRN}  FOUND : {name}{ANSI_RST}")
                 print(f"{ANSI_GRN}{'=' * term_w}{ANSI_RST}\n")
                 post_result(name)
-                frame.close()
                 keyboard.unhook_all()
                 print(f"{ANSI_GRN}Press any key to exit.{ANSI_RST}")
                 keyboard.read_key()
@@ -349,25 +403,19 @@ def main():
         raise
     finally:
         try:
-            frame.close()
-        except Exception:
-            pass
-        try:
             keyboard.unhook_all()
         except Exception:
             pass
 
 
 if __name__ == "__main__":
-    if _WIN:
-        try:
-            hwnd = win32gui.GetForegroundWindow()
-            win32gui.SetWindowPos(
-                hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
-                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
-            )
-        except Exception:
-            pass
+    try:
+        pytesseract.get_tesseract_version()
+    except Exception:
+        print(f"{ANSI_RED}[warn] tesseract not found in PATH{ANSI_RST}")
+        print(f"{ANSI_RED}install: https://github.com/UB-Mannheim/tesseract/wiki{ANSI_RST}")
+        print(f"{ANSI_YLW}continuing with color-only detection{ANSI_RST}")
+        _OCR = False
 
     print(f"{ANSI_CYN}Click the Discord username field, then press any key.{ANSI_RST}")
     keyboard.read_key()
